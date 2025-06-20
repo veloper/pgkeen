@@ -1,0 +1,26 @@
+services:
+  db:
+    restart: always
+    image: pgkeen:latest 
+    command: postgres -c config_file=/var/lib/postgresql/data/postgresql.conf
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-}"
+      POSTGRES_HOST_AUTH_METHOD: "${POSTGRES_HOST_AUTH_METHOD:-trust}"
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      shared_default:
+        aliases:
+          - postgres # alias so other services can connect using a more explicit name
+    volumes:
+      - ./data:/var/lib/postgresql/data
+networks:
+  shared_default:
+    driver: bridge
+    # Uncomment if you want to launch just this service, and allow other 
+    # networks to access it (requires the external network to be created 
+    # beforehand)
+    # external: true 

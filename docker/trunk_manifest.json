@@ -1,0 +1,36 @@
+{
+    "settings": {
+        "pg_config": "/usr/lib/postgresql/16/bin/pg_config",
+        "pg_version": 16,
+        "sharedir": "/usr/share/postgresql/16",
+        "pkglibdir": "/usr/lib/postgresql/16/lib"
+    },
+    "packages": [
+        { "name": "pgvector", "ext": "vector", "description": "Vector similarity search for Postgres" },
+        { "name": "age", "ext": "age", "description": "Graph database extension for PostgreSQL" },
+        { "name": "pg_partman", "ext": "pg_partman", "description": "Automated time-based/serial-based partition maintenance" },
+        { "name": "pg_trgm", "ext": "pg_trgm", "description": "Text similarity using trigram matching" },
+        { "name": "pgsql_http", "ext": "http", "description": "HTTP client for PostgreSQL" },
+        { "name": "plpython3u", "ext": "plpython3u", "description": "PL/Python procedural language" },
+        { "name": "pg_net", "ext": "pg_net", "description": "Network access for PostgreSQL" },
+        { "name": "pg_jsonschema", "ext": "pg_jsonschema", "description": "JSON Schema validation for PostgreSQL" },
+        { "name": "hstore", "ext": "hstore", "description": "Key-value store within PostgreSQL" },
+        { "name": "ltree", "ext": "ltree", "description": "Hierarchical tree-like structures" },
+        { "name": "dict_int", "ext": "dict_int", "description": "Integer-based dictionary for full-text search" },
+        { "name": "intarray", "ext": "intarray", "description": "Functions and operators for integer arrays" },
+        { "name": "intagg", "ext": "intagg", "description": "Aggregate functions for integer arrays" },
+        { "name": "fuzzystrmatch", "ext": "fuzzystrmatch", "description": "Approximate string matching" },
+        { "name": "bloom", "ext": "bloom", "description": "Bloom filter index for PostgreSQL" },
+        { "name": "uuid_ossp", "ext": "uuid-ossp", "description": "UUID generation functions" },
+        { "name": "xml2", "ext": "xml2", "description": "XPath querying and XSLT for XML data" },
+        { "name": "pg_hashids", "ext": "pg_hashids", "description": "Hashids encoding for PostgreSQL" },
+        { "name": "autoinc", "ext": "autoinc", "description": "Auto-incrementing columns" },
+        { "name": "postgis", "ext": "postgis", "description": "Spatial and geographic objects for PostgreSQL" },
+        { "name": "citext", "ext": "citext", "description": "Case-insensitive text" },
+        { "name": "pg_embedding", "ext": "embedding", "description": "Vector embedding support for PostgreSQL" },
+        { "name": "postgresml", "ext": "pgml", "description": "Machine learning in PostgreSQL" },
+        { "name": "vectorize", "ext": "vectorize", "description": "Vectorization utilities for PostgreSQL" },
+        { "name": "pgmq", "ext": "pgmq", "description": "Message queue for PostgreSQL" },
+        { "name": "envvar", "ext": "envvar", "description": "Environment variable access in PostgreSQL" }
+    ]
+}
