@@ -126,8 +126,10 @@ services:
       PGDATA: /var/lib/postgresql/data
 
 
-      # Declarative ENV => GUCs 
-      PG_AUTOINC:
+      # Declarative Examples ENV => GUCs 
+      PG_WORK_MEM: 4MB
+      PG_LOG_MIN_DURATION_STATEMENT: 0
+      PG_AUTO_EXPLAIN__LOG_MIN_DURATION: 0
     ports:
       - "5432:5432"
     networks:
@@ -135,7 +137,7 @@ services:
         aliases:
           - postgres # alias so other services can connect using a more explicit name
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - ./data/pg:/var/lib/postgresql/data
 networks:
   shared_default:
     driver: bridge
