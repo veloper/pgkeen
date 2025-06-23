@@ -40,19 +40,12 @@ from pathlib import Path
 from typing import (Any, Dict, Generator, List, Literal, NamedTuple, Optional, Self, Sequence, Set, Tuple, Union,
                     overload)
 
-import click, psycopg2
+import click
 
 from click import ClickException
-from psycopg2 import pool
-from psycopg2.extensions import connection as pg_connection
-from psycopg2.extensions import cursor as pg_cursor
-from psycopg2.extras import DictCursor, DictRow, register_json
 
 
 logger = logging.getLogger(__name__)
-
-
-
 
 
 @dataclass
@@ -86,101 +79,6 @@ class PostgresConfig():
         return "".join(constr)
         
         
-# ---------------------------------------------
-# PostgreSQL client
-# ---------------------------------------------
-
-
-class PostgresClient:
-    """PostgreSQL client with connection pooling and transaction management."""
-
-    def __init__(
-        self,
-        dsn: str,
-        min_connections: int = 1,
-        max_connections: int = 10,
-        application_name: Optional[str] = None,
-    ) -> None:
-        self.dsn = dsn
-        self.min_connections = min_connections
-        self.max_connections = max_connections
-        self.application_name = application_name
-        self._pool: Optional[pool.ThreadedConnectionPool] = None
-
-    def _initialize_connection(self, conn: pg_connection) -> None:
-        """Initialize the connection with JSON support and application name."""
-        register_json(conn)
-        if self.application_name:
-            with conn.cursor() as cur:
-                cur.execute("SET application_name = %s", (self.application_name,))
-
-    def _get_pool(self) -> pool.ThreadedConnectionPool:
-        """Get or create a connection pool."""
-        if self._pool is None:
-            try:
-                self._pool = pool.ThreadedConnectionPool(
-                    minconn=self.min_connections,
-                    maxconn=self.max_connections,
-                    dsn=self.dsn,
-                )
-            except psycopg2.OperationalError as e:
-                logger.error("Failed to connect to PostgreSQL: %s", e)
-                raise
-        return self._pool
-
-    @contextmanager
-    def connection(self) -> Generator[pg_connection, None, None]:
-        """Provide a connection from the pool."""
-        pool_instance = self._get_pool()
-        conn = pool_instance.getconn()
-        try:
-            self._initialize_connection(conn)
-            yield conn
-        finally:
-            pool_instance.putconn(conn)
-
-    @contextmanager
-    def cursor(self, dict_cursor: bool = True) -> Generator[Union[DictCursor, pg_cursor], None, None]:
-        """Provide a cursor from a connection."""
-        with self.connection() as conn:
-            cursor_factory = DictCursor if dict_cursor else None
-            with conn.cursor(cursor_factory=cursor_factory) as curs:
-                yield curs
-
-    def execute(self, query: str, params: Optional[Union[Tuple, Dict]] = None) -> str:
-        """Execute a query and return the status message."""
-        with self.cursor() as cur:
-            cur.execute(query, params)
-            return cur.statusmessage or ""
-
-    def fetch_all(self, query: str, params: Optional[Union[Tuple, Dict]] = None) -> Sequence[Union[DictRow, Tuple[Any, ...]]]:
-        """Fetch all rows from a query."""
-        with self.cursor() as cur:
-            cur.execute(query, params)
-            return cur.fetchall()
-
-    def fetch_one(self, query: str, params: Optional[Union[Tuple, Dict]] = None) -> Optional[Union[DictRow, Tuple[Any, ...]]]:
-        """Fetch one row from a query."""
-        with self.cursor() as cur:
-            cur.execute(query, params)
-            return cur.fetchone()
-
-    def fetch_value(self, query: str, params: Optional[Union[Tuple, Dict]] = None) -> Any:
-        """Fetch a single value from a query."""
-        with self.cursor(dict_cursor=False) as cur:
-            cur.execute(query, params)
-            row = cur.fetchone()
-            if row is None:
-                raise IndexError("Query returned no rows")
-            return row[0]
-
-    def close(self) -> None:
-        """Close all connections in the pool."""
-        if self._pool is not None:
-            self._pool.closeall()
-            self._pool = None
-            logger.info("PostgreSQL connection pool closed")
-
 
 
 
@@ -1071,43 +969,6 @@ def initdb_upsert(ctx: InitdbContext, name: str, ext: str, content: str, silent:
     
     truncated_for_echo = content[:25] + "... (truncated)" if len(content) > 25 else content
     echo(f"File '{file_path}' created with content:\n{truncated_for_echo}")
-    
-
-# =============================================================================================================
-# CLI :: Trunk Namespace
-# =============================================================================================================
-
-@dataclass
-class TrunkPackage:
-    """Represents a Trunk package."""
-    name: str # trunk package name
-    ext: str # postgresql extension name
-    description: str | None = None
-    version: str | None = None
-
-    
-    
-
-@dataclass
-class TrunkManifest:
-    """Represents the trunk_manifest.json file."""
-    json_path: Path
-    
-    
-    
-
-class TrunkContext:
-    """Context for managing the Trunk CLI."""
-    
-    def __init__(self):
-        self.manifest_path = Path("/etc/postgresql/trunk.json")
-
-    
-@cli.group()
-def trunk():
-    """Trunk is a postgres extension package manager."""
-    pass
-
 
     
 # ---------------------------
@@ -1118,52 +979,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# def debug_locally():
-#     """Debug the CLI locally."""
-    
-#     conf_file = Path(__file__).parent / "postgresql.conf.sample"
-    
-#     orig_repo = SettingRepository(conf_file)
-    
-#     from rich.console import Console
-#     from rich.table import Table
-    
-#     console = Console()
-    
-#     def output_settings(repository: SettingRepository):
-#         settings = repository.findall()
-        
-#         table = Table(title="PostgreSQL Settings",show_lines=True)
-#         table.add_column("Key", justify="left", style="cyan")
-#         table.add_column("Value", justify="left", style="magenta")
-#         table.add_column("Comment", justify="left", style="green")
-#         table.add_column("Original Line", justify="left", style="yellow")
-        
-#         for setting in settings:
-#             table.add_row(
-#                 setting.key,
-#                 str(setting.value),
-#                 setting.comment or "",
-#                 setting.original_line or ""
-#             )
-            
-#         console.print(table)
-#         console.print(f"Total settings: {len(settings)}")
-#         console.print(f"Repository path: {repository.path}")
-        
-#     output_settings(orig_repo)
-    
-#     # testing the logic of upserting a new non-existing setting
-#     new_setting = orig_repo.update_or_build("test_setting", "test_value", "This is a test setting.")
-#     orig_repo.persist(new_setting)
-#     orig_repo.flush()
-    
-#     fresh_repo = SettingRepository(conf_file)
-    
-#     output_settings(fresh_repo)
-
-# if __name__ == "__main__":
-#     debug_locally()
-#     # cli()

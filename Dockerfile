@@ -137,60 +137,16 @@ RUN trunk install --pg-config /usr/lib/postgresql/16/bin/pg_config --pg-version 
     rm -rf ~/.pg-trunk/cache || true && \
     rm -rf /tmp/* || true
 
-# ===================================================================================================
-# pg_tools.py // INITDB 
-# ===================================================================================================
 
-RUN <<EOF_INITDB
+# ===============================================================================================
+# Deep merge the docker/src directory into the root of the image
+# This allows for easy addition of custom SQL scripts, extensions, etc.
+# ===============================================================================================
 
-START=$(date +%s%N)
-uid() { 
-    local NOW=$(date +%s%N)
-    local DIFF=$(($NOW - $START))
-    printf "%015d" $DIFF
-}
-
+COPY ./docker/src .
 
 # Modify PostgreSQL configuration through a shell command
-# Note: Manually extracted form trunk installation logs
-pg_tools.py initdb upsert "$(uid)_postgresql_conf_shared_preload_libraries" sh "pg_tools.py conf upsert shared_preload_libraries age pg_net pgml pg_cron vectorize"
-
-# Cron Required Settings
-pg_tools.py initdb upsert "$(uid)_postgresql_conf_cron_db_name" sh "pg_tools.py conf upsert cron.database_name postgres"
-
-# Setup the postgres role (ensure it exists and has correct privileges)
-pg_tools.py initdb upsert "$(uid)_postgres_role" sql "ALTER ROLE postgres LOGIN SUPERUSER;"
-pg_tools.py initdb upsert "$(uid)_postgres_grant_db_privileges" sql "GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;"
-
-# Enable all extensions for the 'postgres' database
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS vector CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS age CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS pg_partman CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS pg_trgm CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS http CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS plpython3u CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS pg_net CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS pg_jsonschema CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS hstore CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS ltree CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS dict_int CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS intarray CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS intagg CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS fuzzystrmatch CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS bloom CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS uuid-ossp CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS xml2 CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS pg_hashids CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS autoinc CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS address_standardizer_data_us CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS citext CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS embedding CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS pgml CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS pg_cron CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS pgmq CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS vectorize CASCADE;\""
-pg_tools.py initdb upsert "$(uid)_create_ext_on_postgres" sh "psql -d postgres -c \"CREATE EXTENSION IF NOT EXISTS envvar CASCADE;\""
-EOF_INITDB
+# pg_tools.py initdb upsert "$(uid)_postgresql_conf_shared_preload_libraries" sh "pg_tools.py conf upsert shared_preload_libraries age pg_net pgml pg_cron vectorize"
 
 # Default command - entrypoint handles config location and execution
 CMD ["postgres"]

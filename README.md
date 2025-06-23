@@ -2,6 +2,36 @@
 
 pgkeen (`/ˈpiː‿ˈdʒiː.ˈkiːn/`) extends the official `postgres:16` docker image with essential extensions for AI/ML, vector operations, and data processing. It's built as a force multiplier for AI-function-calling tools like MCP, Dify, Flowise, etc, to enable a set of fundamental tools that can compose higher order functionality.
 
+## Features
+
+### Declarative ENV → PostgreSQL GUC Synchronization
+
+Every 5 minutes, `pgkeen` uses the `pg_cron` and `getenv` extensions to automatically synchronize PostgreSQL settings (GUCs) with environment variables.
+
+Here's how it works:
+1.  The `pg_settings` view is queried, and the list of settings is filtered to exclude the following...
+    *   Settings that are internal-use only (`vartype = 'internal'`) 
+    *   Session-specific settings (`name LIKE 'local%'` or `'session%'`) 
+    *   Settings that require a full server restart (`context = 'postmaster'`)
+2.  For the remaining settings, a corresponding environment variable name is generated.
+    *   `env_var = CONCAT('PG_', UPPER(REPLACE(name, '.', '__')))`
+3.  Then, the values of these environment variables are retrieved.
+4.  If a setting's current value in the database differs from its corresponding environment variable, an `ALTER SYSTEM` command is generated for it.
+5.  Finally, `pg_reload_conf()` is called to atomically apply all staged changes to the live configuration.
+
+#### Naming Convention Examples
+
+| PostgreSQL GUC                  | Environment Variable                |
+|:--------------------------------|:------------------------------------|
+| `work_mem`                      | `PG_WORK_MEM`                       |
+| `log_min_duration_statement`    | `PG_LOG_MIN_DURATION_STATEMENT`     |
+| `auto_explain.log_min_duration` | `PG_AUTO_EXPLAIN__LOG_MIN_DURATION` |
+
+> [!tip]
+> Reset a GUC back to its default value by setting its environment variable to an empty string (`""`).
+
+> [!note]
+> These changes are persistent across process, container, and system restarts, as `ALTER SYSTEM` writes them to the `postgresql.auto.conf` file within your `$PGDATA` volume.
 
 ## Extensions
 
@@ -58,10 +88,14 @@ All are pre-enabled on the `postgres` database via `CREATE EXTENSION` on image i
 
 ## Additional Features
 - Python 3.10.14 compiled from source
-- Use of `cargo` + `pg-trunk` for building and installing extensions
-- All extensions pre-installed and enabled on `postgres` database
+- All extensions pre-installed and enabled on `postgres` database and user.
 - Full carryover support for the official `postgres:16` image and its idiosyncrasies.
 - Custom python scripts that provide targeted `postgresql.conf` editing as well as initdb creation. 
+
+
+
+> [!note]
+> This convention is identical to how `pydantic-settings` translates environment variables into nested models.
 
 ## Usage
 
@@ -92,6 +126,10 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-}"
       POSTGRES_HOST_AUTH_METHOD: "${POSTGRES_HOST_AUTH_METHOD:-trust}"
       PGDATA: /var/lib/postgresql/data
+
+
+      # Declarative ENV => GUCs 
+      PG_AUTOINC:
     ports:
       - "5432:5432"
     networks:

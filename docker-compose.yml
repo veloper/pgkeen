@@ -1,7 +1,8 @@
 services:
   db:
     restart: always
-    image: pgkeen:latest 
+    image: veloper/pgkeen:latest 
+    pull_policy: always
     command: postgres -c config_file=/var/lib/postgresql/data/postgresql.conf
     environment:
       POSTGRES_DB: postgres
@@ -10,13 +11,14 @@ services:
       POSTGRES_HOST_AUTH_METHOD: "${POSTGRES_HOST_AUTH_METHOD:-trust}"
       PGDATA: /var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "15432:5432"
     networks:
       shared_default:
         aliases:
           - postgres # alias so other services can connect using a more explicit name
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - ./docker/src/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./data/pgdata:/var/lib/postgresql/data
 networks:
   shared_default:
     driver: bridge
