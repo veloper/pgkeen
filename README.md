@@ -4,6 +4,12 @@ pgkeen (`/ˈpiː‿ˈdʒiː.ˈkiːn/`) extends the official `postgres:16` docker
 
 ## Features
 
+### General
+
+- Python 3.10.14 compiled from source
+- Full carryover support for the official `postgres:16` image and its idiosyncrasies.
+- All extensions pre-installed and enabled on `postgres` database and user.
+
 ### Declarative ENV → PostgreSQL GUC Synchronization
 
 Every 5 minutes, `pgkeen` uses the `pg_cron` and `getenv` extensions to automatically synchronize PostgreSQL settings (GUCs) with environment variables.
@@ -86,16 +92,8 @@ All are pre-enabled on the `postgres` database via `CREATE EXTENSION` on image i
 | [PostGIS](https://github.com/postgis/postgis) | Spatial database extender that adds support for geographic objects and spatial queries |
 
 
-## Additional Features
-- Python 3.10.14 compiled from source
-- All extensions pre-installed and enabled on `postgres` database and user.
-- Full carryover support for the official `postgres:16` image and its idiosyncrasies.
-- Custom python scripts that provide targeted `postgresql.conf` editing as well as initdb creation. 
 
 
-
-> [!note]
-> This convention is identical to how `pydantic-settings` translates environment variables into nested models.
 
 ## Usage
 
