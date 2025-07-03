@@ -4,7 +4,6 @@ pg_client() {
     local host="${SETTINGS[host]}"
     local port="${SETTINGS[port]}"
     local user="${SETTINGS[user]}"
-    local database="${SETTINGS[database]}"
 
     if [[ -z "$user" || -z "$host" || -z "$port" ]]; then
         echo "[pg_psql] Missing required Postgres connection parameters." >&2
@@ -18,10 +17,6 @@ pg_client() {
     parts+=("--port=$port")
     parts+=("--username=$user")
 
-    # If a specific database is provided, use it
-    if [[ -n "$database" ]]; then
-        parts+=("--dbname=$database")
-    fi
 
     # Never issue a password prompt. If the server requires password authentication and a password is not available from
     # other sources such as a .pgpass file, the connection attempt will fail. This option can be useful in batch jobs
@@ -31,9 +26,6 @@ pg_client() {
     # Prevent asking for user interaction
     # Note: This also disables readline support so you can't use arrow keys, history, or tab completion
     parts+=("--no-readline")
-
-    # Single Transaction mode
-    parts+=("--single-transaction")
 
     # Echo errors
     parts+=("--echo-errors")
@@ -100,22 +92,23 @@ pg_users_create() {
 
     info "Creating user '$username' ..."
     if [[ -n "$password" ]]; then
-        pg_client -c "CREATE USER \"$username\" WITH PASSWORD '$password';"
+        pg_client -c "CREATE ROLE \"$username\" WITH PASSWORD '$password';"
     else
-        pg_client -c "CREATE USER \"$username\";"
+        pg_client -c "CREATE ROLE \"$username\";"
     fi
     if [[ $? -ne 0 ]]; then
         error "Failed to create user '$username'."
         return 1
+    else
+        return 0
     fi
-    success "User '$username' created successfully."
 }
 
 
 pg_users_drop() {
     local username="$1"
     if [[ -z "$username" ]]; then
-        echo "Username is required." >&2
+        error "Username is required." >&2
         return 1
     fi
     if ! pg_users_exists "$username"; then
@@ -123,12 +116,11 @@ pg_users_drop() {
         return 1
     fi
     info "Dropping user '$username' ..."
-    pg_client -c "DROP USER \"$username\";"
+    pg_client -c "DROP ROLE \"$username\";"
     if [[ $? -ne 0 ]]; then
         error "Failed to drop user '$username'."
         return 1
     fi
-    success "User '$username' dropped successfully."
 }
 
 pg_users_set_password() {
@@ -147,7 +139,7 @@ pg_users_set_password() {
 
 
     info "Setting password for user '$username' ..."
-    pg_client -c "ALTER USER \"$username\" WITH PASSWORD '$password';"
+    pg_client -c "ALTER ROLE \"$username\" WITH PASSWORD '$password';"
     if [[ $? -ne 0 ]]; then
         error "Failed to set password for user '$username'."
         return 1
@@ -162,8 +154,13 @@ pg_users_exists() {
         echo "Username is required." >&2
         return 1
     fi
-    pg_client -t -c "SELECT 1 FROM pg_user WHERE usename = '$username';"
-    if [[ $? -eq 0 ]]; then return 0; else return 1; fi
+    local result
+    result=$(pg_client -t -A -c "SELECT 1 FROM pg_user WHERE usename = '$username';" | tr -d '[:space:]')
+    if [[ "$result" == "1" ]]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # == Database Management Functions =============================================================
@@ -263,7 +260,13 @@ pg_databases_exists() {
         echo "Database name is required." >&2
         return 1
     fi
-    pg_client -t -c "SELECT 1 FROM pg_database WHERE datname = '$dbname';"
+    local result
+    result=$(pg_client -t -A -c "SELECT 1 FROM pg_database WHERE datname = '$dbname';")
+    if [[ "$result" == "1" ]]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 pg_databases_get_owner() {
@@ -286,12 +289,47 @@ pg_databases_drop() {
         return 1
     fi
     info "Dropping database '$dbname' ..."
-    pg_client -c "DROP DATABASE \"$dbname\";"
+
+    # Must run as postgres user to avoid connecting to the database being dropped
+    pg_client --dbname="postgres" -c "DROP DATABASE \"$dbname\";"
     if [[ $? -ne 0 ]]; then
         error "Failed to drop database '$dbname'."
         return 1
     fi
     success "Database '$dbname' dropped successfully."
+    return 0
+}
+
+pg_databases_change_owner() {
+    local dbname="$1"
+    local new_owner="$2"
+
+    if [[ -z "$dbname" || -z "$new_owner" ]]; then
+        error "Database name and new owner are required." >&2
+        return 1
+    fi
+
+    if ! pg_databases_exists "$dbname"; then
+        error "Database '$dbname' does not exist." >&2
+        return 1
+    fi
+
+    if ! pg_users_exists "$new_owner"; then
+        error "User '$new_owner' does not exist." >&2
+        return 1
+    fi
+
+    # Change the owner of the database
+    
+    info "Changing owner of database '$dbname' to '$new_owner' ..."
+    pg_client -c "ALTER DATABASE $dbname OWNER TO $new_owner;"
+    if [[ $? -ne 0 ]]; then
+        error "Failed to change owner for database '$dbname' to '$new_owner'."
+        return 1
+    fi
+
+    success "Owner of database '$dbname' changed to '$new_owner'."
+    return 0
 }
 
 pg_databases_create() {
@@ -303,46 +341,60 @@ pg_databases_create() {
         return 1
     fi
 
-    # Ensure user exists before any DB operations
+    # Ensure USER exists
     if ! pg_users_exists "$owner"; then
         info "Creating user '$owner' ..."
         pg_client -c "CREATE USER \"$owner\" WITH PASSWORD NULL;"
-        [[ $? -ne 0 ]] && error "Failed to create user '$owner'." && return 1
+        if [[ $? -ne 0 ]]; then
+            error "Failed to create user '$owner'."
+            return 1
+        fi
     else
         info "User '$owner' already exists."
     fi
 
-    if pg_databases_exists "$dbname"; then
-        info "Found existing database '$dbname'. Checking owner..."
-        local current_owner
-        current_owner=$(pg_databases_get_owner "$dbname")
-        if [[ "$current_owner" != "$owner" ]]; then
-            warning "Database '$dbname' owner is '$current_owner', changing to '$owner' ..."
-            pg_client -c "ALTER DATABASE \"$dbname\" OWNER TO \"$owner\";"
-            [[ $? -ne 0 ]] && error "Failed to change owner for database '$dbname'." && return 1
-            success "Owner of database '$dbname' changed from '$current_owner' to '$owner'."
-        else
-            info "Database '$dbname' already owned by '$owner'."
+    
+    # Handle DATABASE creation
+    if ! pg_databases_exists "$dbname"; then
+        info "Creating NEW database '$dbname'..."
+        pg_client -c "CREATE DATABASE \"$dbname\";"
+        if [[ $? -ne 0 ]]; then
+            error "Failed to create database '$dbname'."
+            return 1
         fi
+        info "Database '$dbname' created successfully."
     else
-        info "Creating database '$dbname' with owner '$owner' ..."
-        pg_client -c "CREATE DATABASE \"$dbname\" OWNER \"$owner\";"
-        [[ $? -ne 0 ]] && error "Failed to create database '$dbname'." && return 1
-        success "Database '$dbname' created successfully."
+        info "Found EXISTING database '$dbname'."    
     fi
 
-    # Ensure owner has CREATE privilege for extensions
+    # Handle OWNERSHIP
+    local current_owner=$(pg_databases_get_owner "$dbname")
+    if [[ "$current_owner" != "$owner" ]]; then
+        info "Setting owner of database '$dbname' to '$owner' ..."
+        pg_databases_change_owner "$dbname" "$owner"
+    else
+        info "Database '$dbname' already owned by '$owner'."
+    fi
+   
+
+    # Ensure owner has CREATE privileges (for extensions)
     info "Ensuring '$owner' has CREATE privilege on database '$dbname' for extensions ..."
     pg_client -c "GRANT CREATE ON DATABASE \"$dbname\" TO \"$owner\";"
-    [[ $? -ne 0 ]] && error "Failed to grant CREATE privilege on database '$dbname' to '$owner'." && return 1
+    if [[ $? -ne 0 ]]; then
+        error "Failed to grant CREATE privilege on database '$dbname' to '$owner'."
+        return 1
+    fi
 
     success "Database '$dbname' and user '$owner' setup completed successfully."
+    warning "Run 'pgkeen db enable-extensions $dbname' to enable all extensions."
+    
+    return 0
 }
 
 pg_databases_create_all_extensions_if_not_exists() {
     local dbname="$1"
     if [[ -z "$dbname" ]]; then
-        echo "Database name is required." >&2
+        error "Database name is required." >&2
         return 1
     fi
 
