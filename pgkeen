@@ -17,7 +17,7 @@ version_command() {
 
 # :command.usage
 pgkeen_usage() {
-  printf "pgkeen - Postgres Keen CLI for Docker, DB, and User management\n\n"
+  printf "pgkeen - (\`/'pi:‿'dʒi:.'ki:n/\`) quality-of-life tools.\n\n"
 
   printf "%s\n" "Usage:"
   printf "  pgkeen [OPTIONS] COMMAND\n"

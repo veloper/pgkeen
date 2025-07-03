@@ -10,44 +10,24 @@ pgkeen (`/ˈpiː‿ˈdʒiː.ˈkiːn/`) extends the official `postgres:16` docker
 - Full carryover support for the official `postgres:16` image and its idiosyncrasies.
 - All extensions pre-installed and enabled on `postgres` database and user.
 
-### Scripts
-There are a few quality-of-life scripts included in the `bin/` to help both dev and end-users manage the PostgreSQL instance.
+### `./pgkeen` CLI
 
----
-#### `./bin/admin.sh`
+A simple set of tools to run administrative commands on the PostgreSQL instance _after_ it's been initialized. It uses the `psql` command-line client to execute SQL commands against the database for common tasks related to user and database management.
 
-A simple script to run administrative commands on the PostgreSQL instance _after_ it's been initialized. It uses the `psql` command-line client to execute SQL commands against the database for common tasks related to user and database management.
+```bash
+./pgkeen
+pgkeen - (`/'pi:‿'dʒi:.'ki:n/`) quality-of-life tools.
 
-```shell
-./bin/admin.sh user --help && ./bin/admin.sh db --help
+Usage:
+  pgkeen [OPTIONS] COMMAND
+  pgkeen [COMMAND] --help | -h
+  pgkeen --version | -v
 
-Usage: ./bin/admin.sh user <command> [OPTIONS] [ARGUMENTS...]
-
-Available 'user' commands:
-  show                 - Shows detailed information for a specific user.
-  list                 - Lists all users in the database.
-  create               - Creates a new user idempotently, upserting if necessary.
-  rename               - Renames an existing user, reassigning all owned objects and privileges.
-  set-password         - Sets or changes a user's password.
-  drop                 - Drops/deletes a user from the database.
-
-Usage ./bin/admin.sh db <command> [OPTIONS] [ARGUMENTS...]
-
-Available 'db' commands:
-  show                 - Shows detailed information for a specific database.
-  list                 - Lists all databases on the server.
-  create               - Creates a new database idempotently, upserting if necessary.
-  rename               - Renames an existing database, handling active connections and optionally migrating extensions.
-  drop                 - Drops/deletes a database.
-  analyze              - Analyzes a database.
-  vacuum               - Vacuums a database.
-```  
----
-
-#### `./bin/reinitdb.sh`
-
-This will start you over from a clean slate, reinitializing the PostgreSQL data directory, creating all the extensions on the `postgres` database, and setting up the cron job for declarative environment variable synchronization.
-
+Commands:
+  db       Database management commands
+  docker   Docker management commands
+  user     User management commands
+```
 
 ### Declarative Environment Variables Synchronization
 
