@@ -1,0 +1,1 @@
+pg_databases_create_all_extensions_if_not_exists "${args[database]}" 

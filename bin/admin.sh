@@ -481,6 +481,8 @@ db_create() {
     info "Database '$dbname' created."
   fi
 }
+
+
 db_drop() {
   # Drops/deletes a database.
   #

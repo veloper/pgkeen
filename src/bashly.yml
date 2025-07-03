@@ -1,0 +1,166 @@
+name: pgkeen
+help: Postgres Keen CLI for Docker, DB, and User management
+version: 0.1.0
+
+
+flags:
+  &postgres_flags
+    - long: --user
+      arg: user
+      help: "Postgres user"
+      default: postgres
+
+    - long: --host
+      arg: host
+      help: "Postgres server host"
+      default: localhost
+
+    - long: --port
+      arg: port
+      help: "Postgres server port"
+      default: "5432"
+
+    - long: --database
+      arg: database
+      help: "Database to operate on"
+      default: postgres
+
+    - long: --pgpassfile
+      arg: pgpassfile
+      help: "Path to the .pgpass file for password management"
+      default: "${HOME}/.pgpass"
+
+commands:
+  - name: db
+    help: Database management commands
+    commands:
+      - name: analyze
+        help: Run ANALYZE on the specified database to update statistics
+        flags: *postgres_flags
+        args:
+          - name: database
+            help: Name of the database to analyze
+      
+      - name: create
+        help: Create a new database with an owner
+        flags: *postgres_flags
+        args:
+          - name: database
+            required: true
+            help: Name for the new database
+          
+          - name: owner
+            required: false
+            help: "User setup as the owner of the database (default: same as database)"
+      
+      - name: drop
+        help: Drop a database (requires interactive confirmation)
+        flags: *postgres_flags
+        args:
+          - name: database
+            required: true
+            help: Database to drop
+      
+      - name: list
+        flags: *postgres_flags
+        help: List all databases in the Postgres server
+      
+      - name: show
+        flags: *postgres_flags
+        help: Show details for a specific database
+        args:
+          - name: database
+            required: true
+            help: Database to show details for inspection
+      
+      - name: vacuum
+        flags: *postgres_flags
+        help: Run the VACUUM command on the specified database
+        args:
+          - name: database
+            required: true
+            help: Database to vacuum
+
+      - name: enable-extensions
+        help: Enable all extensions in the specified database
+        flags: *postgres_flags
+        args:
+          - name: database
+            required: true
+            help: Database to enable extensions in
+  
+  - name: docker
+    help: Docker management commands
+    commands:
+      - name: build
+        help: Build the Docker image
+        args:
+          - name: dockerfile
+            required: false
+            help: "Path to the Dockerfile (default: 'Dockerfile')"
+            default: "./Dockerfile"
+          - name: tag
+            required: false
+            help: "Tag for the Docker image (default: 'veloper/pgkeen:latest')"
+            default: "veloper/pgkeen:latest"
+      
+      - name: push
+        help: Push the Docker image
+        args:
+          - name: tag
+            required: false
+            help: "Tag for the Docker image (default: 'veloper/pgkeen:latest')"
+            default: "veloper/pgkeen:latest"
+      
+      - name: reinitdb
+        help: Reinitialize the docker init.d by clearing out data and restarting the container
+        args:
+          - name: docker_compose_file
+            required: false
+            help: "Path to the Docker Compose file (default: 'docker-compose.yml')"
+            default: "./docker-compose.yml"
+        flags:
+          - long: --data-dir
+            arg: data_dir
+            help: "Path to the data directory containing the postgresql's data files"
+            default: "./data/pgdata"
+  
+  - name: user
+    help: User management commands
+    commands:
+      - name: create
+        help: Create a new postgres user
+        flags: *postgres_flags
+        args:
+          - name: username
+            help: Username for the new user
+            required: true
+      
+      - name: drop
+        help: Drop a user
+        flags: *postgres_flags
+        args:
+          - name: username
+            help: Username to drop
+            required: true
+      
+      - name: list
+        flags: *postgres_flags
+        help: List all users in the database
+
+      - name: show
+        help: Show details for a specific user
+        flags: *postgres_flags
+        args:
+          - name: username
+            required: true
+            help: User to show details for inspection 
+
+      - name: set-password
+        help: Set or change a user's password
+        flags: *postgres_flags
+        args:
+          - name: username
+            help: User whose password will be changed
+            required: true
+      

@@ -1,0 +1,127 @@
+name: cli
+help: PostgreSQL administration CLI
+version: 0.1.0
+
+commands:
+  - name: user
+    help: User management commands
+    commands:
+      - name: list
+        help: List all users in the database
+      - name: show
+        help: Show details for a specific user
+        args:
+          - name: username
+            required: true
+            help: Username to show details for
+      - name: create
+        help: Create a new user (idempotent)
+        args:
+          - name: username
+            required: true
+            help: Username for the new user
+        flags:
+          - long: --superuser
+            help: Create as a superuser
+          - long: --database
+            arg: dbname
+            help: "Also create a database for the user (default: same as username)"
+        environment_variables:
+          - name: PASSWORD
+            help: Password for the new user (optional)
+      - name: drop
+        help: Drop a user
+        args:
+          - name: username
+            required: true
+            help: Username to drop
+        flags:
+          - long: --cascade
+            help: Drop user and all dependent objects
+      - name: rename
+        help: Rename a user
+        args:
+          - name: old_username
+            required: true
+            help: Current username
+          - name: new_username
+            required: true
+            help: New username
+        flags:
+          - long: --objects
+            help: Reassign all owned objects to new user
+          - long: --privileges
+            help: Reassign all granted privileges to new user
+      - name: set-password
+        help: Set or change a user's password
+        args:
+          - name: username
+            required: true
+            help: User whose password will be changed
+        environment_variables:
+          - name: PASSWORD
+            help: The new password (required)
+  - name: db
+    help: Database management commands
+    commands:
+      - name: list
+        help: List all databases
+      - name: show
+        help: Show details for a specific database
+        args:
+          - name: dbname
+            required: true
+            help: Database to show details for
+      - name: create
+        help: Create a new database (idempotent)
+        args:
+          - name: dbname
+            required: true
+            help: Name for the new database
+          - name: owner
+            required: true
+            help: Set the database owner
+      - name: drop
+        help: Drop a database
+        args:
+          - name: dbname
+            required: true
+            help: Database to drop
+        flags:
+          - long: --force
+            help: Forcibly disconnect users (Postgres 13+)
+      - name: rename
+        help: Rename a database
+        args:
+          - name: old_dbname
+            required: true
+            help: Current database name
+          - name: new_dbname
+            required: true
+            help: New database name
+        flags:
+          - long: --force
+            help: Terminate all connections to the old database before renaming
+          - long: --migrate-extensions
+            help: Recreate extensions in the new database if rename fails
+      - name: vacuum
+        help: Vacuum a database
+        args:
+          - name: dbname
+            required: true
+            help: Database to vacuum
+      - name: analyze
+        help: Analyze a database
+        args:
+          - name: dbname
+            required: true
+            help: Database to analyze
+  - name: docker
+    help: Docker management commands
+    commands:
+      - name: build
+        help: Build the Docker image
+      - name: push
+        help: Push the Docker image
+      - name: reinitdb
+        help: Reinitialize the database using Docker
